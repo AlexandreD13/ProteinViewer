@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protein Viewer (WebGL)</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+<canvas id="glCanvas"></canvas>
+
+<div id="controls">
+    <strong>
+        <u>
+            Protein Information:
+        </u>
+    </strong>
+
+    <br><br>
+
+    <strong>
+        Name:
+    </strong>
+    <span id="proteinName">Loading...</span>
+
+    <br>
+
+    <strong>
+        PDB ID:
+    </strong>
+    <span id="pdbId">6LCW</span>
+
+    <br>
+
+    <strong>
+        Atoms:
+    </strong>
+    <span id="atomCount">0</span>
+
+    <br>
+
+    <strong>
+        Bonds:
+    </strong>
+    <span id="bondCount">0</span>
+
+    <br><br>
+
+    <label for="atomSizeSlider">
+        <strong>
+            Atom Size:
+        </strong>
+    </label>
+
+    <br>
+
+    <input id="atomSizeSlider" class="slider" type="range" min="20" max="40" value="30">
+    <span id="atomSizeValue">30</span>
+
+    <br><br>
+
+    <button id="toggleAtoms">Hide Atoms</button>
+    <button id="toggleBonds">Hide Bonds</button>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gl-matrix/2.8.1/gl-matrix-min.js"></script>
+<script src="{{ url_for('static', filename='js/main.js') }}"></script>
+</body>
+</html>
