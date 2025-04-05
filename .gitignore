@@ -1,6 +1,7 @@
 ### Node template
 # custom
 .idea/
+data/components.cif
 
 # Logs
 logs
