@@ -1,0 +1,44 @@
+#controls {
+    position: absolute;
+    top: 20px;
+    left: 20px;
+    color: white;
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    z-index: 1;
+
+    padding: 10px;
+    border: 2px solid rgba(75, 75, 75, 0.8);
+    border-radius: 10px;
+
+    background-color: rgba(50, 50, 50, 0.8);
+}
+
+button {
+    margin-top: 5px;
+    padding: 5px 10px;
+    font-size: 14px;
+    cursor: pointer;
+}
+
+.sidebar {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 250px;
+    height: 92vh;
+    background-color: #f4f4f4;
+    padding: 20px;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    overflow-y: auto;
+}
+
+#controls button {
+    display: block;
+    margin: 10px 0;
+    width: 100%;
+}
+
+.slider {
+    width: 100%;
+}

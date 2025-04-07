@@ -1,7 +1,7 @@
-import React, { useRef, useEffect } from 'react';
-import { mat4 } from 'gl-matrix';
+import React, {useRef, useEffect} from 'react';
+import {mat4} from 'gl-matrix';
 
-export default function GLCanvas({ atomData, showAtoms, showBonds, atomSize }) {
+export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 	const canvasRef = useRef();
 	const rotX = useRef(0), rotY = useRef(0), zoom = useRef(2);
 	const tx = useRef(0), ty = useRef(0);
@@ -21,11 +21,71 @@ export default function GLCanvas({ atomData, showAtoms, showBonds, atomSize }) {
 		window.addEventListener('resize', resize);
 		resize();
 
+		const compileShaders = (gl) => {
+			const vsSource = `
+			  attribute vec3 atomPosition;
+			  attribute float atomicNumber;
+			  uniform mat4 uModelViewMatrix;
+			  uniform mat4 uProjectionMatrix;
+			  uniform float uZoom;
+			  uniform float uAtomSize;
+			  varying float vAtomicNumber;
+			  void main() {
+				vAtomicNumber = atomicNumber;
+				gl_PointSize = min(uAtomSize / uZoom, 40.0);
+				gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(atomPosition / 50.0, 1.0);
+			  }
+			`;
+			const fsSource = `
+			  precision mediump float;
+			  varying float vAtomicNumber;
+			  vec4 getColor(float atomicNumber) {
+				if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0);      // H: white
+				if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0,0.0,0.0,1.0); // C: red
+				if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0,0.0,1.0,1.0); // N: blue
+				if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0,1.0,0.0,1.0); // O: green
+				if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0,1.0,0.0,1.0); // S: yellow
+				return vec4(0.5,0.5,0.5,1.0);
+			  }
+			  void main() {
+				vec2 c = gl_PointCoord - 0.5;
+				if (dot(c,c) > 0.25) discard;
+				gl_FragColor = getColor(vAtomicNumber);
+			  }
+			`;
+			const bondVs = `
+			  attribute vec3 bondPosition;
+			  uniform mat4 uModelViewMatrix;
+			  uniform mat4 uProjectionMatrix;
+			  void main() {
+				gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(bondPosition / 50.0, 1.0);
+			  }
+			`;
+			const bondFs = `
+			  precision mediump float;
+			  void main() { gl_FragColor = vec4(0.8,0.8,0.8,1.0); }
+			`;
+
+			function compile(src, type) {
+				const shader = gl.createShader(type);
+				gl.shaderSource(shader, src);
+				gl.compileShader(shader);
+				if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+					console.error(gl.getShaderInfoLog(shader));
+				}
+				return shader;
+			}
+
+			const atomShaderProgram = createShaderProgram(gl, vsSource, fsSource, compile);
+			const bondShaderProgram = createShaderProgram(gl, bondVs, bondFs, compile);
+			return {atomShaderProgram, bondShaderProgram};
+		};
+
 		// Shader programs
-		const { atomShaderProgram, bondShaderProgram } = compileShaders(gl);
+		const {atomShaderProgram, bondShaderProgram} = compileShaders(gl);
 
 		// Buffers
-		const { posBuf, numBuf, bondBuf } = setupBuffers(gl, atomData);
+		const {posBuf, numBuf, bondBuf} = setupBuffers(gl, atomData);
 
 		// Interaction event listeners
 		setupInteractionHandlers(canvas);
@@ -76,66 +136,6 @@ export default function GLCanvas({ atomData, showAtoms, showBonds, atomSize }) {
 		};
 	};
 
-	const compileShaders = (gl) => {
-		const vsSource = `
-      attribute vec3 atomPosition;
-      attribute float atomicNumber;
-      uniform mat4 uModelViewMatrix;
-      uniform mat4 uProjectionMatrix;
-      uniform float uZoom;
-      uniform float uAtomSize;
-      varying float vAtomicNumber;
-      void main() {
-        vAtomicNumber = atomicNumber;
-        gl_PointSize = min(uAtomSize / uZoom, 40.0);
-        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(atomPosition / 50.0, 1.0);
-      }
-    `;
-		const fsSource = `
-      precision mediump float;
-      varying float vAtomicNumber;
-      vec4 getColor(float atomicNumber) {
-        if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0);      // H: white
-        if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0,0.0,0.0,1.0); // C: red
-        if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0,0.0,1.0,1.0); // N: blue
-        if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0,1.0,0.0,1.0); // O: green
-        if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0,1.0,0.0,1.0); // S: yellow
-        return vec4(0.5,0.5,0.5,1.0);
-      }
-      void main() {
-        vec2 c = gl_PointCoord - 0.5;
-        if (dot(c,c) > 0.25) discard;
-        gl_FragColor = getColor(vAtomicNumber);
-      }
-    `;
-		const bondVs = `
-      attribute vec3 bondPosition;
-      uniform mat4 uModelViewMatrix;
-      uniform mat4 uProjectionMatrix;
-      void main() {
-        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(bondPosition / 50.0, 1.0);
-      }
-    `;
-		const bondFs = `
-      precision mediump float;
-      void main() { gl_FragColor = vec4(0.8,0.8,0.8,1.0); }
-    `;
-
-		function compile(src, type) {
-			const shader = gl.createShader(type);
-			gl.shaderSource(shader, src);
-			gl.compileShader(shader);
-			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-				console.error(gl.getShaderInfoLog(shader));
-			}
-			return shader;
-		}
-
-		const atomShaderProgram = createShaderProgram(gl, vsSource, fsSource, compile);
-		const bondShaderProgram = createShaderProgram(gl, bondVs, bondFs, compile);
-		return { atomShaderProgram, bondShaderProgram };
-	};
-
 	const createShaderProgram = (gl, vsSource, fsSource, compile) => {
 		const vert = compile(vsSource, gl.VERTEX_SHADER);
 		const frag = compile(fsSource, gl.FRAGMENT_SHADER);
@@ -159,7 +159,7 @@ export default function GLCanvas({ atomData, showAtoms, showBonds, atomSize }) {
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bondBuf);
 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, atomData.bonds, gl.STATIC_DRAW);
 
-		return { posBuf, numBuf, bondBuf };
+		return {posBuf, numBuf, bondBuf};
 	};
 
 	const setupInteractionHandlers = (canvas) => {
@@ -228,5 +228,5 @@ export default function GLCanvas({ atomData, showAtoms, showBonds, atomSize }) {
 		gl.drawElements(gl.LINES, numBonds, gl.UNSIGNED_SHORT, 0);
 	};
 
-	return <canvas ref={canvasRef} style={{ display: 'block' }} />;
+	return <canvas ref={canvasRef} style={{display: 'block'}}/>;
 }
