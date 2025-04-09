@@ -14,7 +14,7 @@ function App() {
     });
     const [showAtoms, setShowAtoms] = useState(true);
     const [showBonds, setShowBonds] = useState(true);
-    const [atomSize, setAtomSize] = useState(30);
+    const [atomSize, setAtomSize] = useState(20);
 
     useEffect(() => {
         fetch(`/api/protein/${proteinInfo.pdbId}.pdb`)
