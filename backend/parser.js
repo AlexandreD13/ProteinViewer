@@ -22,10 +22,12 @@ function parseRecord(recordsString) {
 
 			parts.forEach(part => {
 				const [key, value] = part.split(":").map(s => s.trim());
+
 				if (key && value) record[key] = value;
 			});
 
 			if (compoundId) acc[compoundId] = record;
+
 			return acc;
 		}, {});
 }
@@ -36,6 +38,7 @@ function parseBONDS(atoms) {
 
 	for (let i = 0; i < atoms.length - 1; i++) {
 		const a = atoms[i];
+
 		for (let j = i + 1; j < atoms.length; j++) {
 			const b = atoms[j];
 			const dx = a.x - b.x;
@@ -106,7 +109,7 @@ function parseSEQRES(lines) {
 	const chains = {};
 
 	for (const line of lines) {
-		if (!line.startsWith('SEQRES')) continue;
+		if (!line.startsWith("SEQRES")) continue;
 
 		const chainID = line.substring(11, 12);
 		const residues = line.substring(19).trim().split(/\s+/);
@@ -231,6 +234,7 @@ function parseJRNL(lines) {
 function parsePDBFile(filename) {
 	const filePath = path.join(__dirname, "..", "data", "pdb_files", filename);
 	const data = fs.readFileSync(filePath, "utf8");
+	const lines = data.split("\n");
 
 	let proteinClassification = "";
 	let depositedDate = ""
@@ -248,8 +252,6 @@ function parsePDBFile(filename) {
 	const seqAdv = [];
 	const het = [];
 
-	const lines = data.split("\n");
-
 	for (let line of lines) {
 		if (line.startsWith("HEADER")) {
 			const filteredLine = line.replace("\r", "").split(" ").filter(Boolean);
@@ -259,55 +261,26 @@ function parsePDBFile(filename) {
 			proteinName = filteredLine.at(-1);
 		}
 
-		if (line.startsWith("TITLE")) {
-			proteinDescription += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("COMPND")) {
-			compoundsString += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("SOURCE")) {
-			sourcesString += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("KEYWDS")) {
-			keywordsString += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("EXPDTA")) {
-			expDataString += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("AUTHOR")) {
-			authorsString += line.substring(10, 80).trimEnd();
-		}
-
-		if (line.startsWith("REVDAT")) {
-			parseREVDAT(line, revData);
-		}
-
-		if (line.startsWith("DBREF")) {
-			parseDBREF(line, dbRef);
-		}
-
-		if (line.startsWith("SEQADV")) {
-			parseSEQADV(line, seqAdv);
-		}
-
-		if (line.startsWith("HET ")) {
-			parseHET(line, het);
-		}
-
-		// ^^^^^^^^^^^^^^^^^^
-
-		// parseRemarks();
-
-		// vvvvvvvvvvvvvvvvvv
-
-		if (line.startsWith("ATOM")) {
-			parseATOMS(line, atoms);
-		}
+		if (line.startsWith("TITLE"))  proteinDescription += line.substring(10, 80).trim();
+		if (line.startsWith("COMPND")) compoundsString += line.substring(10, 80).trim();
+		if (line.startsWith("SOURCE")) sourcesString += line.substring(10, 80).trim();
+		if (line.startsWith("KEYWDS")) keywordsString += line.substring(10, 80).trim();
+		if (line.startsWith("EXPDTA")) expDataString += line.substring(10, 80).trim();
+		if (line.startsWith("AUTHOR")) authorsString += line.substring(10, 80).trim();
+		if (line.startsWith("REVDAT")) parseREVDAT(line, revData);
+		if (line.startsWith("DBREF"))  parseDBREF(line, dbRef);
+		if (line.startsWith("SEQADV")) parseSEQADV(line, seqAdv);
+		if (line.startsWith("HET "))   parseHET(line, het);
+		if (line.startsWith("HETSYN"));
+		if (line.startsWith("FORMUL"));
+		if (line.startsWith("HELIX"));
+		if (line.startsWith("SHEET"));
+		if (line.startsWith("LINK"));
+		if (line.startsWith("SITE"));
+		if (line.startsWith("ATOM")) parseATOMS(line, atoms);
+		if (line.startsWith("HETATM"));
+		if (line.startsWith("CONECT"));
+		if (line.startsWith("MASTER"));
 	}
 
 	const bonds = parseBONDS(atoms);
@@ -326,7 +299,7 @@ function parsePDBFile(filename) {
 		journal: parseJRNL(lines),
 		dbRef: dbRef,
 		seqAdv: seqAdv,
-		seqres: parseSEQRES(lines),
+		seqRes: parseSEQRES(lines),
 		het: het,
 		atomCount: atoms.length,
 		bondCount: bonds.length / 2,
