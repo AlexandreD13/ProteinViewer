@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import GLCanvas from './components/GLCanvas';
 import Controls from './components/Controls';
+import Legend from './components/Legend';
 import './App.css';
 
 function App() {
@@ -76,8 +77,16 @@ function App() {
                 onAtomSizeChange={size => setAtomSize(size)}
                 onLoadProtein={handleLoadProtein}
             />
+            <Legend />
             <div className="watermark">
-                © 2025 Alexandre Desfossés
+                © 2025{' '}
+                <a
+                    href="https://github.com/AlexandreD13"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                >
+                    Alexandre Desfossés
+                </a>
             </div>
         </div>
     );
