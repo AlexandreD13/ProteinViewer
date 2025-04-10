@@ -1,17 +1,12 @@
-const fs = require('fs');
 const path = require('path');
 
-function parsePDBFile(filename) {
-	const filePath = path.join(__dirname, '..', 'data', filename);
-	const data = fs.readFileSync(filePath, 'utf8');
-
+function parsePDBFile(name, data) {
 	const atomMap = { H: 1.0, C: 6.0, N: 7.0, O: 8.0, S: 16.0 };
-	const bondThreshold = 2.0; // angstroms
+	const bondThreshold = 2.0;
 
 	const atoms = [];
 	const lines = data.split('\n');
 
-	// 1) Parse atoms
 	for (let line of lines) {
 		if (line.startsWith('ATOM')) {
 			const name       = line.substring(12, 16).trim();
@@ -20,15 +15,13 @@ function parsePDBFile(filename) {
 			const x          = parseFloat(line.substring(30, 38));
 			const y          = parseFloat(line.substring(38, 46));
 			const z          = parseFloat(line.substring(46, 54));
-			const element    = name[0];                    // crude: first letter
+			const element    = name[0];
 			const atomicNumber = atomMap[element] || 0.0;
 
 			atoms.push({ name, residueName, chainID, x, y, z, atomicNumber });
 		}
 	}
 
-	// 2) Detect bonds by distance threshold
-	//    We’ll collect flat pairs [i, j, i, j, …]
 	const bonds = [];
 	for (let i = 0; i < atoms.length; i++) {
 		for (let j = i + 1; j < atoms.length; j++) {
@@ -42,9 +35,8 @@ function parsePDBFile(filename) {
 		}
 	}
 
-	// 3) Build your JSON response
 	return {
-		name: path.basename(filename, path.extname(filename)), // or pull from HEADER
+		name: name,
 		atoms: atoms.map(a => ({
 			name: a.name,
 			residueName: a.residueName,
@@ -54,7 +46,7 @@ function parsePDBFile(filename) {
 			z: a.z,
 			atomicNumber: a.atomicNumber
 		})),
-		bonds,                        // flat [i, j, i, j, …]
+		bonds,
 		atomCount: atoms.length,
 		bondCount: bonds.length / 2,
 	};
