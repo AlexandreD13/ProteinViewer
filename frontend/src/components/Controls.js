@@ -6,9 +6,11 @@ export default function Controls({
 									 showAtoms,
 									 showBonds,
 									 atomSize,
+									 viewMode,
 									 onToggleAtoms,
 									 onToggleBonds,
 									 onAtomSizeChange,
+									 onViewModeChange,
 									 onLoadProtein,
 								 }) {
 
@@ -71,6 +73,13 @@ export default function Controls({
 			</button>
 			<button onClick={onToggleBonds} className="custom-button">
 				{showBonds ? 'Hide Bonds' : 'Show Bonds'}
+			</button>
+			<br/><br/>
+			<button
+				onClick={() => onViewModeChange(viewMode === "ballstick" ? "surface" : "ballstick")}
+				className="custom-button"
+			>
+				{viewMode === "ballstick" ? "Switch to Molecular Surface" : "Switch to Ball & Stick"}
 			</button>
 		</div>
 	);
