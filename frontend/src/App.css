@@ -42,6 +42,9 @@ html, body {
   padding: 0;
   height: 100%;
   overflow: hidden;
+
+  background-color: #000000;
+  color: #FFFFFF;
 }
 
 #glCanvas {
