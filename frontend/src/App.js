@@ -15,6 +15,7 @@ function App() {
     const [showAtoms, setShowAtoms] = useState(true);
     const [showBonds, setShowBonds] = useState(true);
     const [atomSize, setAtomSize] = useState(20);
+    const [viewMode, setViewMode] = useState("ballstick");
 
     const handleLoadProtein = (data) => {
         setProteinInfo({
@@ -52,6 +53,7 @@ function App() {
             positions: positions,
             atomicNumbers: atomicNumbers,
             bonds: flatBonds,
+            surface: data.surface,
         });
     };
 
@@ -65,6 +67,7 @@ function App() {
                     showAtoms={showAtoms}
                     showBonds={showBonds}
                     atomSize={atomSize}
+                    viewMode={viewMode}
                 />
             )}
             <Controls
@@ -72,9 +75,11 @@ function App() {
                 showAtoms={showAtoms}
                 showBonds={showBonds}
                 atomSize={atomSize}
+                viewMode={viewMode}
                 onToggleAtoms={() => setShowAtoms(v => !v)}
                 onToggleBonds={() => setShowBonds(v => !v)}
                 onAtomSizeChange={size => setAtomSize(size)}
+                onViewModeChange={mode => setViewMode(mode)}
                 onLoadProtein={handleLoadProtein}
             />
             <Legend />

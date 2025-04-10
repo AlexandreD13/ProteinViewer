@@ -1,11 +1,23 @@
-import React, {useRef, useEffect} from 'react';
-import {mat4} from 'gl-matrix';
+import React, { useRef, useEffect } from 'react';
+import { mat4 } from 'gl-matrix';
 
-export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
+export default function GLCanvas({
+									 atomData,
+									 showAtoms,
+									 showBonds,
+									 atomSize,
+									 viewMode, // "ballstick" or "surface"
+								 }) {
 	const canvasRef = useRef();
-	const rotX = useRef(0), rotY = useRef(0), zoom = useRef(2);
-	const tx = useRef(0), ty = useRef(0);
-	const dragging = useRef(false), lastX = useRef(0), lastY = useRef(0), ctrl = useRef(false);
+	const rotX = useRef(0),
+		rotY = useRef(0),
+		zoom = useRef(2);
+	const tx = useRef(0),
+		ty = useRef(0);
+	const dragging = useRef(false),
+		lastX = useRef(0),
+		lastY = useRef(0),
+		ctrl = useRef(false);
 
 	useEffect(() => {
 		if (!atomData || !atomData.positions) return;
@@ -17,89 +29,25 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			return;
 		}
 
+		// Set up canvas resize handler
 		const resize = setupResize(canvas, gl);
 		window.addEventListener('resize', resize);
 		resize();
 
-		const compileShaders = (gl) => {
-			const vsSource = `
-			  attribute vec3 atomPosition;
-			  attribute float atomicNumber;
-			  
-			  uniform mat4 uModelViewMatrix;
-			  uniform mat4 uProjectionMatrix;
-			  uniform float uZoom;
-			  uniform float uAtomSize;
-			  
-			  varying float vAtomicNumber;
-			  
-			  void main() {
-				vAtomicNumber = atomicNumber;
-				gl_PointSize = min(uAtomSize / uZoom, 40.0);
-				gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(atomPosition / 50.0, 1.0);
-			  }
-			`;
-			const fsSource = `
-			  precision mediump float;
-			  
-			  varying float vAtomicNumber;
-			  
-			  vec4 getColor(float atomicNumber) {
-				if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0, 1.0, 1.0, 1.0);  // H: white
-				if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0, 0.0, 0.0, 1.0);  // C: red
-				if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0, 0.0, 1.0, 1.0);  // N: blue
-				if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0, 1.0, 0.0, 1.0);  // O: green
-				if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0, 1.0, 0.0, 1.0); // S: yellow
-				
-				return vec4(0.5,0.5,0.5,1.0);
-			  }
-			  
-			  void main() {
-				vec2 c = gl_PointCoord - 0.5;
-				if (dot(c,c) > 0.25) discard;
-				gl_FragColor = getColor(vAtomicNumber);
-			  }
-			`;
-			const bondVs = `
-			  attribute vec3 bondPosition;
-			  
-			  uniform mat4 uModelViewMatrix;
-			  uniform mat4 uProjectionMatrix;
-			  
-			  void main() {
-				gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(bondPosition / 50.0, 1.0);
-			  }
-			`;
-			const bondFs = `
-			  precision mediump float;
-			  
-			  void main() {
-			  	gl_FragColor = vec4(0.8,0.8,0.8,1.0);
-			  }
-			`;
+		// Compile shaders for atoms & bonds (ball & stick)
+		const { atomShaderProgram, bondShaderProgram } = compileBallstickShaders(gl);
+		// Create buffers for atoms and bonds
+		const { posBuf, numBuf, bondBuf } = setupBallstickBuffers(gl, atomData);
 
-			function compile(src, type) {
-				const shader = gl.createShader(type);
-				gl.shaderSource(shader, src);
-				gl.compileShader(shader);
-				if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-					console.error(gl.getShaderInfoLog(shader));
-				}
-				return shader;
-			}
+		// Compile and set up molecular surface buffers if available
+		let surfaceShaderProgram = null;
+		let surfaceBuffers = null;
+		if (atomData.surface && viewMode === "surface") {
+			surfaceShaderProgram = compileSurfaceShader(gl);
+			surfaceBuffers = setupSurfaceBuffers(gl, atomData.surface);
+		}
 
-			const atomShaderProgram = createShaderProgram(gl, vsSource, fsSource, compile);
-			const bondShaderProgram = createShaderProgram(gl, bondVs, bondFs, compile);
-			return {atomShaderProgram, bondShaderProgram};
-		};
-
-		// Shader programs
-		const {atomShaderProgram, bondShaderProgram} = compileShaders(gl);
-
-		// Buffers
-		const {posBuf, numBuf, bondBuf} = setupBuffers(gl, atomData);
-
-		// Interaction event listeners
+		// Set up interaction event listeners
 		setupInteractionHandlers(canvas);
 
 		// Matrices
@@ -119,15 +67,31 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 				mat4.rotateX(mv, mv, rotX.current);
 				mat4.rotateY(mv, mv, rotY.current);
 
-				if (showAtoms) {
-					drawAtoms(gl, atomShaderProgram, mv, proj, posBuf, numBuf, atomData.positions.length, atomSize);
-				}
-
-				if (showBonds) {
-					drawBonds(gl, bondShaderProgram, mv, proj, bondBuf, atomData.bonds.length);
+				// Render based on selected view mode
+				if (viewMode === "ballstick") {
+					if (showAtoms) {
+						drawAtoms(gl, atomShaderProgram, mv, proj, posBuf, numBuf, atomData.positions.length, atomSize);
+					}
+					if (showBonds) {
+						drawBonds(gl, bondShaderProgram, mv, proj, bondBuf, atomData.bonds.length);
+					}
+				} else if (viewMode === "surface") {
+					// Render the molecular surface if available
+					if (atomData.surface && surfaceShaderProgram && surfaceBuffers) {
+						drawMolecularSurface(
+							gl,
+							surfaceShaderProgram,
+							mv,
+							proj,
+							surfaceBuffers.vertBuf,
+							surfaceBuffers.indexBuf,
+							surfaceBuffers.numIndices
+						);
+					} else {
+						console.warn('Molecular surface data not available.');
+					}
 				}
 			}
-
 			requestAnimationFrame(draw);
 		};
 
@@ -138,7 +102,9 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		return () => {
 			window.removeEventListener('resize', resize);
 		};
-	}, [atomData, showAtoms, showBonds, atomSize]);
+	}, [atomData, showAtoms, showBonds, atomSize, viewMode]);
+
+	// --- Helper Functions ---
 
 	const setupResize = (canvas, gl) => {
 		return () => {
@@ -148,6 +114,110 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		};
 	};
 
+	// Compile shaders for ball & stick rendering (atoms and bonds)
+	const compileBallstickShaders = (gl) => {
+		// Atom shaders
+		const vsSource = `
+            attribute vec3 atomPosition;
+            attribute float atomicNumber;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+            uniform float uZoom;
+            uniform float uAtomSize;
+
+            varying float vAtomicNumber;
+
+            void main() {
+                vAtomicNumber = atomicNumber;
+                gl_PointSize = min(uAtomSize / uZoom, 40.0);
+                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(atomPosition / 50.0, 1.0);
+            }
+        `;
+		const fsSource = `
+            precision mediump float;
+
+            varying float vAtomicNumber;
+
+            vec4 getColor(float atomicNumber) {
+                if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0, 1.0, 1.0, 1.0);
+                if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0, 0.0, 0.0, 1.0);
+                if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0, 0.0, 1.0, 1.0);
+                if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0, 1.0, 0.0, 1.0);
+                if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0, 1.0, 0.0, 1.0);
+                return vec4(0.5, 0.5, 0.5, 1.0);
+            }
+
+            void main() {
+                vec2 c = gl_PointCoord - 0.5;
+                if (dot(c, c) > 0.25) discard;
+                gl_FragColor = getColor(vAtomicNumber);
+            }
+        `;
+		// Bond shaders
+		const bondVs = `
+            attribute vec3 bondPosition;
+
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+
+            void main() {
+                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(bondPosition / 50.0, 1.0);
+            }
+        `;
+		const bondFs = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(0.8, 0.8, 0.8, 1.0);
+            }
+        `;
+
+		function compile(src, type) {
+			const shader = gl.createShader(type);
+			gl.shaderSource(shader, src);
+			gl.compileShader(shader);
+			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+				console.error(gl.getShaderInfoLog(shader));
+			}
+			return shader;
+		}
+
+		const atomShaderProgram = createShaderProgram(gl, vsSource, fsSource, compile);
+		const bondShaderProgram = createShaderProgram(gl, bondVs, bondFs, compile);
+		return { atomShaderProgram, bondShaderProgram };
+	};
+
+	// Compile the shader for molecular surface rendering
+	const compileSurfaceShader = (gl) => {
+		const surfaceVs = `
+            attribute vec3 surfacePosition;
+            uniform mat4 uModelViewMatrix;
+            uniform mat4 uProjectionMatrix;
+            void main() {
+                gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(surfacePosition / 50.0, 1.0);
+            }
+        `;
+
+		const surfaceFs = `
+            precision mediump float;
+            void main() {
+                gl_FragColor = vec4(0.6, 0.6, 0.6, 1.0);
+            }
+        `;
+
+		function compile(src, type) {
+			const shader = gl.createShader(type);
+			gl.shaderSource(shader, src);
+			gl.compileShader(shader);
+			if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+				console.error(gl.getShaderInfoLog(shader));
+			}
+			return shader;
+		}
+		return createShaderProgram(gl, surfaceVs, surfaceFs, compile);
+	};
+
+	// Utility to create a shader program
 	const createShaderProgram = (gl, vsSource, fsSource, compile) => {
 		const vert = compile(vsSource, gl.VERTEX_SHADER);
 		const frag = compile(fsSource, gl.FRAGMENT_SHADER);
@@ -158,7 +228,8 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		return program;
 	};
 
-	const setupBuffers = (gl, atomData) => {
+	// Set up buffers for ball & stick (atoms and bonds)
+	const setupBallstickBuffers = (gl, atomData) => {
 		const posBuf = gl.createBuffer();
 		gl.bindBuffer(gl.ARRAY_BUFFER, posBuf);
 		gl.bufferData(gl.ARRAY_BUFFER, atomData.positions, gl.STATIC_DRAW);
@@ -171,9 +242,34 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, bondBuf);
 		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, atomData.bonds, gl.STATIC_DRAW);
 
-		return {posBuf, numBuf, bondBuf};
+		return { posBuf, numBuf, bondBuf };
 	};
 
+	// Set up buffers for the molecular surface.
+	// Converts plain objects/arrays to typed arrays if needed.
+	const setupSurfaceBuffers = (gl, surfaceData) => {
+		// Convert vertices and indices to typed arrays if they aren't already.
+		const vertices =
+			surfaceData.vertices instanceof Float32Array
+				? surfaceData.vertices
+				: new Float32Array(Object.values(surfaceData.vertices));
+		const indices =
+			surfaceData.indices instanceof Uint16Array
+				? surfaceData.indices
+				: new Uint16Array(Object.values(surfaceData.indices));
+
+		const vertBuf = gl.createBuffer();
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertBuf);
+		gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+
+		const indexBuf = gl.createBuffer();
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuf);
+		gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+
+		return { vertBuf, indexBuf, numIndices: indices.length };
+	};
+
+	// Set up mouse and wheel interaction handlers
 	const setupInteractionHandlers = (canvas) => {
 		canvas.addEventListener('mousedown', (e) => {
 			dragging.current = true;
@@ -185,7 +281,6 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			if (!dragging.current) return;
 			const dx = e.clientX - lastX.current;
 			const dy = e.clientY - lastY.current;
-
 			if (ctrl.current) {
 				tx.current += dx * 0.0025;
 				ty.current -= dy * 0.0025;
@@ -203,6 +298,7 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		});
 	};
 
+	// Render atoms as points
 	const drawAtoms = (gl, program, mv, proj, posBuf, numBuf, numAtoms, atomSize) => {
 		const posLoc = gl.getAttribLocation(program, 'atomPosition');
 		const numLoc = gl.getAttribLocation(program, 'atomicNumber');
@@ -228,6 +324,7 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		gl.drawArrays(gl.POINTS, 0, numAtoms / 3);
 	};
 
+	// Render bonds as lines
 	const drawBonds = (gl, program, mv, proj, bondBuf, numBonds) => {
 		const bMV = gl.getUniformLocation(program, 'uModelViewMatrix');
 		const bP = gl.getUniformLocation(program, 'uProjectionMatrix');
@@ -240,5 +337,23 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		gl.drawElements(gl.LINES, numBonds, gl.UNSIGNED_SHORT, 0);
 	};
 
-	return <canvas ref={canvasRef} style={{display: 'block'}}/>;
+	// Render the molecular surface mesh as triangles
+	const drawMolecularSurface = (gl, program, mv, proj, vertBuf, indexBuf, numIndices) => {
+		const posLoc = gl.getAttribLocation(program, 'surfacePosition');
+		const uMV = gl.getUniformLocation(program, 'uModelViewMatrix');
+		const uP = gl.getUniformLocation(program, 'uProjectionMatrix');
+
+		gl.useProgram(program);
+		gl.uniformMatrix4fv(uMV, false, mv);
+		gl.uniformMatrix4fv(uP, false, proj);
+
+		gl.bindBuffer(gl.ARRAY_BUFFER, vertBuf);
+		gl.enableVertexAttribArray(posLoc);
+		gl.vertexAttribPointer(posLoc, 3, gl.FLOAT, false, 0, 0);
+
+		gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuf);
+		gl.drawElements(gl.TRIANGLES, numIndices, gl.UNSIGNED_SHORT, 0);
+	};
+
+	return <canvas ref={canvasRef} style={{ display: 'block' }} />;
 }
