@@ -58,8 +58,8 @@ export default function Controls({
 			<label><strong>Atom Size:</strong></label><br/>
 			<input
 				type="range"
-				min="20"
-				max="40"
+				min="10"
+				max="30"
 				value={atomSize}
 				className="slider"
 				onChange={e => onAtomSizeChange(Number(e.target.value))}

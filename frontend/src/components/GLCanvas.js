@@ -199,7 +199,7 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		canvas.addEventListener('mouseup', () => (dragging.current = false));
 		canvas.addEventListener('mouseleave', () => (dragging.current = false));
 		canvas.addEventListener('wheel', (e) => {
-			zoom.current = Math.max(0.1, Math.min(5, zoom.current + e.deltaY * 0.0025));
+			zoom.current = Math.max(0.1, Math.min(5, zoom.current + e.deltaY * 0.001));
 		});
 	};
 
