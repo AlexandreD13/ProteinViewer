@@ -20,10 +20,9 @@
 }
 
 .legend-swatch {
-    width: 20px;
-    height: 20px;
+    width: 12px;
+    height: 12px;
     margin-right: 10px;
-    border: 1px solid #000;
 }
 
 .legend-text {

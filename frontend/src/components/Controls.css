@@ -43,6 +43,68 @@
     width: 100%;
 }
 
+.slider-container {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    margin-top: 10px;
+}
+
 .slider {
-    width: 100%;
+    width: 80%;
+    height: 10px;
+    background: #ddd;
+    border-radius: 5px;
+    -webkit-appearance: none;
+    appearance: none;
+    outline: none;
+    transition: background 0.3s;
+}
+
+.slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 15px;
+    height: 15px;
+    background: royalblue;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: background 0.3s;
+}
+
+.slider::-webkit-slider-thumb:hover {
+    background: darkblue;
+}
+
+/* Style for Firefox */
+.slider::-moz-range-thumb {
+    width: 15px;
+    height: 15px;
+    background: royalblue;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Hover effect for Firefox thumb */
+.slider::-moz-range-thumb:hover {
+    background: darkblue;
+}
+
+/* Style for Internet Explorer */
+.slider::-ms-thumb {
+    width: 15px;
+    height: 15px;
+    background: royalblue;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
+/* Hover effect for IE thumb */
+.slider::-ms-thumb:hover {
+    background: darkblue;
+}
+
+.slider:active {
+    background: #aaa;
 }
