@@ -25,11 +25,14 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			const vsSource = `
 			  attribute vec3 atomPosition;
 			  attribute float atomicNumber;
+			  
 			  uniform mat4 uModelViewMatrix;
 			  uniform mat4 uProjectionMatrix;
 			  uniform float uZoom;
 			  uniform float uAtomSize;
+			  
 			  varying float vAtomicNumber;
+			  
 			  void main() {
 				vAtomicNumber = atomicNumber;
 				gl_PointSize = min(uAtomSize / uZoom, 40.0);
@@ -38,15 +41,19 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			`;
 			const fsSource = `
 			  precision mediump float;
+			  
 			  varying float vAtomicNumber;
+			  
 			  vec4 getColor(float atomicNumber) {
-				if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0);      // H: white
-				if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0,0.0,0.0,1.0); // C: red
-				if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0,0.0,1.0,1.0); // N: blue
-				if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0,1.0,0.0,1.0); // O: green
-				if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0,1.0,0.0,1.0); // S: yellow
+				if (abs(atomicNumber - 1.0) < 0.01) return vec4(1.0, 1.0, 1.0, 1.0);  // H: white
+				if (abs(atomicNumber - 6.0) < 0.01) return vec4(1.0, 0.0, 0.0, 1.0);  // C: red
+				if (abs(atomicNumber - 7.0) < 0.01) return vec4(0.0, 0.0, 1.0, 1.0);  // N: blue
+				if (abs(atomicNumber - 8.0) < 0.01) return vec4(0.0, 1.0, 0.0, 1.0);  // O: green
+				if (abs(atomicNumber - 16.0) < 0.01) return vec4(1.0, 1.0, 0.0, 1.0); // S: yellow
+				
 				return vec4(0.5,0.5,0.5,1.0);
 			  }
+			  
 			  void main() {
 				vec2 c = gl_PointCoord - 0.5;
 				if (dot(c,c) > 0.25) discard;
@@ -55,15 +62,20 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			`;
 			const bondVs = `
 			  attribute vec3 bondPosition;
+			  
 			  uniform mat4 uModelViewMatrix;
 			  uniform mat4 uProjectionMatrix;
+			  
 			  void main() {
 				gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(bondPosition / 50.0, 1.0);
 			  }
 			`;
 			const bondFs = `
 			  precision mediump float;
-			  void main() { gl_FragColor = vec4(0.8,0.8,0.8,1.0); }
+			  
+			  void main() {
+			  	gl_FragColor = vec4(0.8,0.8,0.8,1.0);
+			  }
 			`;
 
 			function compile(src, type) {
@@ -187,7 +199,7 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		canvas.addEventListener('mouseup', () => (dragging.current = false));
 		canvas.addEventListener('mouseleave', () => (dragging.current = false));
 		canvas.addEventListener('wheel', (e) => {
-			zoom.current = Math.max(0.1, Math.min(5, zoom.current + e.deltaY * 0.0025));
+			zoom.current = Math.max(0.1, Math.min(5, zoom.current + e.deltaY * 0.001));
 		});
 	};
 
