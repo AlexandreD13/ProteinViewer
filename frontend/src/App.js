@@ -26,7 +26,9 @@ function App() {
 
         const positions = new Float32Array(data.atoms.length * 3);
         const atomicNumbers = new Float32Array(data.atoms.length);
-        const atomMap = { H: 1, C: 6, N: 7, O: 8, S: 16 };
+        const atomMap = {
+            "H": 1, "C": 6, "N": 7, "O": 8, "S": 16
+        };
 
         data.atoms.forEach((atom, i) => {
             positions[i * 3 + 0] = atom.x;

@@ -3,21 +3,29 @@ import {mat4} from 'gl-matrix';
 
 export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 	const canvasRef = useRef();
-	const rotX = useRef(0), rotY = useRef(0), zoom = useRef(2);
-	const tx = useRef(0), ty = useRef(0);
-	const dragging = useRef(false), lastX = useRef(0), lastY = useRef(0), ctrl = useRef(false);
+	const rotX = useRef(0);
+	const rotY = useRef(0);
+	const zoom = useRef(2);
+	const translationX = useRef(0);
+	const translationY = useRef(0);
+	const dragging = useRef(false);
+	const lastX = useRef(0);
+	const lastY = useRef(0);
+	const ctrl = useRef(false);
 
 	useEffect(() => {
 		if (!atomData || !atomData.positions) return;
 
 		const canvas = canvasRef.current;
 		const gl = canvas.getContext('webgl');
+
 		if (!gl) {
 			alert('WebGL not supported');
 			return;
 		}
 
 		const resize = setupResize(canvas, gl);
+
 		window.addEventListener('resize', resize);
 		resize();
 
@@ -95,8 +103,6 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 
 		// Shader programs
 		const {atomShaderProgram, bondShaderProgram} = compileShaders(gl);
-
-		// Buffers
 		const {posBuf, numBuf, bondBuf} = setupBuffers(gl, atomData);
 
 		// Interaction event listeners
@@ -115,7 +121,7 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 				gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
 				mat4.identity(mv);
-				mat4.translate(mv, mv, [tx.current, ty.current, -zoom.current]);
+				mat4.translate(mv, mv, [translationX.current, translationY.current, -zoom.current]);
 				mat4.rotateX(mv, mv, rotX.current);
 				mat4.rotateY(mv, mv, rotY.current);
 
@@ -152,9 +158,11 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 		const vert = compile(vsSource, gl.VERTEX_SHADER);
 		const frag = compile(fsSource, gl.FRAGMENT_SHADER);
 		const program = gl.createProgram();
+
 		gl.attachShader(program, vert);
 		gl.attachShader(program, frag);
 		gl.linkProgram(program);
+
 		return program;
 	};
 
@@ -187,8 +195,8 @@ export default function GLCanvas({atomData, showAtoms, showBonds, atomSize}) {
 			const dy = e.clientY - lastY.current;
 
 			if (ctrl.current) {
-				tx.current += dx * 0.0025;
-				ty.current -= dy * 0.0025;
+				translationX.current += dx * 0.0025;
+				translationY.current -= dy * 0.0025;
 			} else {
 				rotY.current += dx * 0.0025;
 				rotX.current += dy * 0.0025;

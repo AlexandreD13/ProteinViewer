@@ -1,7 +1,9 @@
 const fs = require("fs");
 const path = require("path");
 
-const atomMap = { H: 1.0, C: 6.0, N: 7.0, O: 8.0, S: 16.0 };
+const atomMap = {
+	H: 1.0, C: 6.0, N: 7.0, O: 8.0, S: 16.0
+};
 
 const residueMap = {
 	GLY: "GLYCINE", ALA: "ALANINE", VAL: "VALINE", LEU: "LEUCINE",
@@ -10,6 +12,17 @@ const residueMap = {
 	GLU: "GLUTAMIC ACID", GLN: "GLUTAMINE", ARG: "ARGININE", LYS: "LYSINE",
 	HIS: "HISTIDINE", PHE: "PHENYLALANINE", TRP: "TRYPTOPHAN", PRO: "PROLINE"
 };
+
+const radiiMap = {
+	"C": 1.5, "C**": 2, "CA": 2, "CB": 2, "CD": 2,
+	"CD1": 1.75, "CD2": 1.75, "CE": 2, "CE1": 1.75, "CE2": 1.75,
+	"CE3": 1.75, "CG": 2, "CG1": 2, "CG2": 2, "CH2": 1.75,
+	"CH3": 2, "CZ": 1.75, "CZ2": 1.75, "CZ3": 1.75, "F**": 2,
+	"N": 1.55, "ND1": 1.55, "ND2": 1.55, "NE": 1.55, "NE1": 1.55,
+	"NE2": 1.55, "NH1": 1.55, "NH2": 1.55, "NZ": 1.55, "O": 1.4,
+	"O**": 1.44, "OD1": 1.4, "OD2": 1.4, "OE1": 1.4, "OE2": 1.4,
+	"OG": 1.4, "OG1": 1.4, "OH": 1.4, "S**": 2, "SD": 2, "SG": 2
+}
 
 function parseRecord(recordsString) {
 	return recordsString
@@ -44,9 +57,9 @@ function parseBONDS(atoms) {
 			const dx = a.x - b.x;
 			const dy = a.y - b.y;
 			const dz = a.z - b.z;
-			const distSquared = dx * dx + dy * dy + dz * dz;
+			const distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
 
-			if (distSquared < thresholdSquared) bonds.push(i, j);
+			if (distance < radiiMap[b.name]) bonds.push(i, j);
 		}
 	}
 
@@ -261,26 +274,26 @@ function parsePDBFile(filename) {
 			proteinName = filteredLine.at(-1);
 		}
 
-		if (line.startsWith("TITLE"))  proteinDescription += line.substring(10, 80).trim();
+		if (line.startsWith("TITLE")) proteinDescription += line.substring(10, 80).trim();
 		if (line.startsWith("COMPND")) compoundsString += line.substring(10, 80).trim();
 		if (line.startsWith("SOURCE")) sourcesString += line.substring(10, 80).trim();
 		if (line.startsWith("KEYWDS")) keywordsString += line.substring(10, 80).trim();
 		if (line.startsWith("EXPDTA")) expDataString += line.substring(10, 80).trim();
 		if (line.startsWith("AUTHOR")) authorsString += line.substring(10, 80).trim();
 		if (line.startsWith("REVDAT")) parseREVDAT(line, revData);
-		if (line.startsWith("DBREF"))  parseDBREF(line, dbRef);
+		if (line.startsWith("DBREF")) parseDBREF(line, dbRef);
 		if (line.startsWith("SEQADV")) parseSEQADV(line, seqAdv);
-		if (line.startsWith("HET "))   parseHET(line, het);
-		if (line.startsWith("HETSYN"));
-		if (line.startsWith("FORMUL"));
-		if (line.startsWith("HELIX"));
-		if (line.startsWith("SHEET"));
-		if (line.startsWith("LINK"));
-		if (line.startsWith("SITE"));
+		if (line.startsWith("HET ")) parseHET(line, het);
+		if (line.startsWith("HETSYN")) ;
+		if (line.startsWith("FORMUL")) ;
+		if (line.startsWith("HELIX")) ;
+		if (line.startsWith("SHEET")) ;
+		if (line.startsWith("LINK")) ;
+		if (line.startsWith("SITE")) ;
 		if (line.startsWith("ATOM")) parseATOMS(line, atoms);
-		if (line.startsWith("HETATM"));
-		if (line.startsWith("CONECT"));
-		if (line.startsWith("MASTER"));
+		if (line.startsWith("HETATM")) ;
+		if (line.startsWith("CONECT")) ;
+		if (line.startsWith("MASTER")) ;
 	}
 
 	const bonds = parseBONDS(atoms);
